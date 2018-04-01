@@ -1,4 +1,4 @@
-  #define TEMP_IN 0
+#define TEMP_IN 0
 #define RELAY_OUT 2
 
 #define CH_LED_OUT 3
@@ -13,6 +13,9 @@
 #define STAT2_LED_OUT 6
 #define STAT2_LED_BRIGHTNESS 255
 
+#define AVG_TEMP_NUM_READINGS 20
+#define AVG_TEMP_READING_DELAY 50
+
 #define ARDUINO_VOLTAGE 5
 
 void setup() {
@@ -25,22 +28,59 @@ void setup() {
   analogWrite(PWR_LED_OUT, PWR_LED_BRIGHTNESS); 
 }
 
-void loop() {
+void loop() {  
+  Serial.println(averagedTemp());
+  delay(5000);
+}
+
+float averagedTemp() {
+  float tempSum = 0;
+  for(int i=0; i < AVG_TEMP_NUM_READINGS; i++) {
+    tempSum += readTemp();
+
+    stat1_led_on();
+    delay(AVG_TEMP_READING_DELAY/2);
+    stat1_led_off();
+    delay(AVG_TEMP_READING_DELAY/2);
+  }
+
+  float avgTemp = tempSum/AVG_TEMP_NUM_READINGS;
+  avgTemp = floor(avgTemp * 2 + 0.5)/2; // Round temperature to nearest 0.5
+  
+  return avgTemp;
+}
+
+float readTemp() {
   int rawValue = analogRead(TEMP_IN);
   
   float voltage = (rawValue / 1024.0) * float(ARDUINO_VOLTAGE);
   float temperature = (voltage - 0.5) / 0.01;
   
-  Serial.println(voltage);
-  Serial.println(temperature);
-  delay(500);
+  return temperature;
+}
+
+void heatingOn() {
   digitalWrite(RELAY_OUT, HIGH);
   analogWrite(CH_LED_OUT, CH_LED_BRIGHTNESS);
-  analogWrite(STAT1_LED_OUT, STAT1_LED_BRIGHTNESS);
-  digitalWrite(STAT2_LED_OUT, LOW);
-  delay(500);
+}
+
+void heatingOff() {
   digitalWrite(RELAY_OUT, LOW);
   digitalWrite(CH_LED_OUT, LOW);
+}
+
+void stat1_led_on() {
+  analogWrite(STAT1_LED_OUT, STAT1_LED_BRIGHTNESS);
+}
+
+void stat2_led_on() {
   analogWrite(STAT2_LED_OUT, STAT2_LED_BRIGHTNESS);
+}
+
+void stat1_led_off() {
   digitalWrite(STAT1_LED_OUT, LOW);
+}
+
+void stat2_led_off() {
+  digitalWrite(STAT2_LED_OUT, LOW);
 }
