@@ -27,8 +27,25 @@ void setup() {
 }
 
 void loop() {  
-  Serial.println(averagedTemp());
-  delay(5000);
+  char command[10];
+  byte msgLen = Serial.readBytesUntil('\n', command, 10);
+  command[msgLen] = '\0';
+  if (msgLen > 0) {
+    stat2_led_on();
+  }
+  if (strcmp(command, "tmp") == 0) {
+    Serial.println(averagedTemp());
+  } else if (strcmp(command, "chon") == 0) {
+    heatingOn();
+    Serial.println("on");
+  } else if (strcmp(command, "choff") == 0) {
+    heatingOff();
+    Serial.println("off");
+  } else if (msgLen > 0) {
+    Serial.println("err");
+  }
+  delay(100);
+  stat2_led_off();
 }
 
 float averagedTemp() {
