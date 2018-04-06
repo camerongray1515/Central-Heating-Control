@@ -16,6 +16,14 @@
 #define AVG_TEMP_NUM_READINGS 20
 #define AVG_TEMP_READING_DELAY 50
 
+#define CH_TIMEOUT_MILLIS 30000
+
+unsigned long foo = 4294967290;
+unsigned long chOffTime = 0; // Time at which CH should turn off, automatically incremented with every heartbeat
+boolean chOn = 0; // Whether the heating is actually on or off
+boolean chSetOn = 0; // Whether the heating is set to be on or off
+boolean wrapped = 0; // Used to handle the value of millis() overflowing
+
 void setup() {
   pinMode(RELAY_OUT, OUTPUT);
   pinMode(CH_LED_OUT, OUTPUT);
@@ -37,15 +45,34 @@ void loop() {
     Serial.println(averagedTemp());
   } else if (strcmp(command, "chon") == 0) {
     heatingOn();
+    chOffTime = millis() + CH_TIMEOUT_MILLIS;
+
+    // If this is true then millis() must have wrapped, set wrapped to 1 so that
+    // we disable the timeout check.  Wrapped will be set back and check will be
+    // reenabled once we have recovered.
+    wrapped = millis() > chOffTime;
+    
+    chSetOn = 1;
     Serial.println("on");
   } else if (strcmp(command, "choff") == 0) {
     heatingOff();
+    chSetOn = 0;
     Serial.println("off");
   } else if (msgLen > 0) {
     Serial.println("err");
   }
   delay(100);
   stat2_led_off();
+
+  if (millis() > chOffTime && chOn && !wrapped) {
+    heatingOff();
+  }
+
+  if (chSetOn != chOn) {
+    ch_led_on();
+    delay(100);
+    ch_led_off();
+  }
 }
 
 float averagedTemp() {
@@ -76,11 +103,21 @@ float readTemp() {
 
 void heatingOn() {
   digitalWrite(RELAY_OUT, HIGH);
-  analogWrite(CH_LED_OUT, CH_LED_BRIGHTNESS);
+  ch_led_on();
+  chOn = 1;
 }
 
 void heatingOff() {
   digitalWrite(RELAY_OUT, LOW);
+  ch_led_off();
+  chOn = 0;
+}
+
+void ch_led_on() {
+  analogWrite(CH_LED_OUT, CH_LED_BRIGHTNESS);
+}
+
+void ch_led_off() {
   digitalWrite(CH_LED_OUT, LOW);
 }
 
